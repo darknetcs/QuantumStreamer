@@ -49,8 +49,14 @@ private:
 	};
 
 	std::map<std::string, SmoothStream> streams_;
+	std::string episodes_path_;
 
 	void processMediaNodes(const std::string& tag_name, Poco::XML::Document* doc, const std::string& episode_id,
 	                       const std::string& episode_path, SmoothStream& stream) const;
 	[[nodiscard]] std::pair<bool, SmoothTrack> preloadTrack(const std::string& path) const;
+	[[nodiscard]] std::string readFile(const Poco::Path& path) const;
+	[[nodiscard]] Poco::Path getEpisodePath(const std::string& episode_id) const;
+	[[nodiscard]] std::string getLocalFragmentFile(const std::string& episode_id, const std::string& track_name,
+	                                               const std::string& bitrate,
+	                                               const std::string& start_time) const;
 };

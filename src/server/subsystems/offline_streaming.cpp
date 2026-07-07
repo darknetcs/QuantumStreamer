@@ -39,13 +39,13 @@ void OfflineStreaming::preload()
 	Logger& logger = Logger::get(name());
 	logger.information("Initializing offline playback subsystem...");
 
-	std::string episodesPath = app.config().getString("Server.EpisodesPath", "./videos/episodes");
+	episodes_path_ = app.config().getString("Server.EpisodesPath", "./videos/episodes");
 	VideoList& videoList = app.getSubsystem<VideoList>();
 
 	// Check if the episodes path exists
 	for (auto episodes = videoList.getEpisodeList(); const auto& episode : episodes)
 	{
-		Path episodePath(episodesPath);
+		Path episodePath(episodes_path_);
 		episodePath.append(episode);
 		File episodeDir(episodePath);
 
@@ -287,7 +287,11 @@ std::pair<bool, OfflineStreaming::SmoothTrack> OfflineStreaming::preloadTrack(co
 std::string OfflineStreaming::getLocalClientManifest(const std::string& episode_id)
 {
 	if (!streams_.contains(episode_id))
-		return "";
+	{
+		Path manifestPath = getEpisodePath(episode_id);
+		manifestPath.append("manifest");
+		return readFile(manifestPath);
+	}
 
 	Logger& logger = Logger::get(name());
 
@@ -317,7 +321,7 @@ std::string OfflineStreaming::getLocalFragment(const std::string& episode_id, co
                                                const std::string& start_time)
 {
 	if (!streams_.contains(episode_id))
-		return {};
+		return getLocalFragmentFile(episode_id, track_name, bitrate, start_time);
 
 	Logger& logger = Logger::get(name());
 
@@ -325,13 +329,13 @@ std::string OfflineStreaming::getLocalFragment(const std::string& episode_id, co
 	std::string mediaKey = track_name + "_" + bitrate;
 
 	if (!mediaMap.contains(mediaKey))
-		return {};
+		return getLocalFragmentFile(episode_id, track_name, bitrate, start_time);
 
 	SmoothMedia media = mediaMap[mediaKey];
 	SmoothTrack track = media.track;
 
 	if (!track.fragments.contains(start_time))
-		return {};
+		return getLocalFragmentFile(episode_id, track_name, bitrate, start_time);
 
 	SmoothFragment fragment = track.fragments[start_time];
 
@@ -404,4 +408,37 @@ std::string OfflineStreaming::getLocalFragment(const std::string& episode_id, co
 	fragmentStream.close();
 
 	return fragmentData;
+}
+
+std::string OfflineStreaming::getLocalFragmentFile(const std::string& episode_id, const std::string& track_name,
+                                                   const std::string& bitrate,
+                                                   const std::string& start_time) const
+{
+	Path fragmentPath = getEpisodePath(episode_id);
+	fragmentPath.append("QualityLevels(" + bitrate + ")");
+	fragmentPath.append("Fragments(" + track_name + "=" + start_time + ")");
+
+	return readFile(fragmentPath);
+}
+
+Path OfflineStreaming::getEpisodePath(const std::string& episode_id) const
+{
+	Path episodePath(episodes_path_);
+	episodePath.append(episode_id);
+	return episodePath;
+}
+
+std::string OfflineStreaming::readFile(const Path& path) const
+{
+	if (!File(path).isFile())
+		return {};
+
+	std::ifstream fileStream(path.toString(), std::ios::binary);
+	if (!fileStream)
+		return {};
+
+	std::ostringstream buffer;
+	buffer << fileStream.rdbuf();
+
+	return buffer.str();
 }
