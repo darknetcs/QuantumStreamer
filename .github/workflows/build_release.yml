@@ -81,8 +81,8 @@ jobs:
           - name: Build
             run: msbuild ${{ github.event.repository.name }}.sln -property:Configuration=Release
 
-          - - name: Upload built DLL
-        uses: actions/upload-artifact@v4
-        with:
-          name: loc_x64_f
-          path: ./x64/Release/loc_x64_f.dll
+          - name: Upload built DLL
+            uses: actions/upload-artifact@v4
+            with:
+              name: loc_x64_f
+              path: ./x64/Release/loc_x64_f.dll
